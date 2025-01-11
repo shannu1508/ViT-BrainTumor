@@ -71,7 +71,7 @@ Combined Training and Validation History (Epochs 1 to 20):
 
 ## Evaluating the Model
 
-During training, the model is evaluated against the validation dataset. Post-training, a confusion matrix is generated and saved as `confusion_matrix.png`, and provides insights into the model's classification performance.
+During training, the model is evaluated against the validation dataset. Post-training, a confusion matrix is generated and saved as `confusion_matrix.png`, and provides insights into the model's performance.
 
 ![confusion matrx](/confusion_matrix.png)
 
@@ -83,11 +83,11 @@ To classify a new image, use the `test.py` script:
 python test.py
 ```
 
-Replace the image path in the script with your target image. The model predicts the tumor class, and a confidence level is displayed along with a visual bar chart saved as `prediction_result.png`.
+Replace the image path in the script with your target image. The model predicts the tumor class, and the confidence level is displayed along with a bar chart saved as `prediction_result.png`.
 
 ![result](/prediction_result.png)
 
 ## Results
 
-The model achieves competitive accuracy in classifying tumor images across four distinct classes. Performance metrics, including accuracy and loss plots, are available in the repository.
+The model achieves a 95.58% accuracy in classifying tumor images across four distinct classes. Performance metrics, including accuracy and loss plots, are available in the repository.
 
