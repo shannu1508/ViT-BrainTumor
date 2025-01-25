@@ -16,12 +16,11 @@ This repository contains an implementation of a Vision Transformer (ViT) model d
 
 ```
 ├── data/                   # Dataset directory (Not included)   
-├── best_model.pth          # Saved model with the best validation accuracy 
-├── cleanup.py              # Script for cleaning up the dataset   
-├── requirements.txt        # List of required Python packages
-├── test.py                 # Script for testing the model on new images
+├── cleanup.py              # Script for dataset cleanup (resizing and duplicate removal)   
+├── requirements.txt      
+├── test.py                 # Inference script
 ├── train.py                # Script for training the model
-└── transformer.py          # Definition of the Vision Transformer model
+└── transformer.py          # Vision Transformer model definition
 ```
 
 ## Setup
