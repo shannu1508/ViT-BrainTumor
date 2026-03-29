@@ -4,3 +4,4 @@ venv
 data
 *.pth
 *.zip
+best_model.h5
