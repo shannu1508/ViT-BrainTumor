@@ -1,4 +1,4 @@
-# A script to remove duplicates from the data set
+# A script to remove duplicates from the data set in this project
 import hashlib
 import os
 
