@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from vit_pytorch import ViT
 
@@ -19,3 +20,23 @@ class TumorClassifierViT(nn.Module):
 
     def forward(self, x):
         return self.vit(x)
+
+    def get_last_selfattention(self, x):
+        attentions = []
+        def hook(module, input, output):
+            attentions.append(output)
+        
+        # Register hook on the last layer's attention softmax
+        target_layer = self.vit.transformer.layers[-1][0].attend
+        handle = target_layer.register_forward_hook(hook)
+        
+        # Forward pass
+        with torch.no_grad():
+            self.vit(x)
+        
+        # Cleanup
+        handle.remove()
+        
+        if attentions:
+            return attentions[0]
+        return None

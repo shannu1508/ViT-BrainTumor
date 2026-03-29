@@ -1,116 +1,131 @@
+import os
 import torch
-import torchvision.transforms as transforms
-from PIL import Image
-import numpy as np
 import torch.nn as nn
-import matplotlib.pyplot as plt
+import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
+from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
+
 from transformer import TumorClassifierViT
 
-# Set device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Load the model
+# ===============================
+# Device configuration
+# ===============================
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+
+# ===============================
+# Load model
+# ===============================
 model = TumorClassifierViT(num_classes=4)
-model.load_state_dict(torch.load('best_model.pth'))
+
+checkpoint_path = "best_model.pth"
+assert os.path.exists(checkpoint_path), "best_model.pth not found"
+
+state_dict = torch.load(checkpoint_path, map_location=device)
+model.load_state_dict(state_dict)
+
 model.to(device)
 model.eval()
 
-# Define the transformation
+
+# ===============================
+# Image transformations
+# ===============================
 data_transforms = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
 ])
 
-# Function to predict a single image
+
+# ===============================
+# Prediction function
+# ===============================
 def predict_image(image_path, model, transform, device):
-    # Open image
-    image = Image.open(image_path).convert('RGB')
-    # Apply transformations
-    image_tensor = transform(image).unsqueeze(0)
-    # Move to device
-    image_tensor = image_tensor.to(device)
-    
-    # Predict
+    assert os.path.exists(image_path), "Image path does not exist"
+
+    image = Image.open(image_path).convert("RGB")
+    image_tensor = transform(image).unsqueeze(0).to(device)
+
     with torch.no_grad():
         outputs = model(image_tensor)
-        probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
-    
-    confidence, predicted = torch.max(probabilities, 0)
-    
-    return predicted.item(), confidence.item(), probabilities.cpu().numpy(), image
+        probabilities = torch.softmax(outputs[0], dim=0)
 
-# Path to the image
-image_path = './data/Testing/pituitary/Te-pi_0018.jpg'  # replace with your image path
+    confidence, predicted_class = torch.max(probabilities, dim=0)
 
-# Predict the class
-predicted_class, confidence, probabilities, image = predict_image(image_path, model, data_transforms, device)
+    return (
+        predicted_class.item(),
+        confidence.item(),
+        probabilities.cpu().numpy(),
+        image
+    )
 
-# Define class names (assuming you know the class order)
-train_dataset = ImageFolder('./data/Training', transform=data_transforms)
+
+# ===============================
+# Image path (CHANGE IF NEEDED)
+# ===============================
+image_path = "./test6.jpg"
+
+
+# ===============================
+# Load class names
+# ===============================
+train_dataset = ImageFolder("./data/Training", transform=data_transforms)
 class_names = train_dataset.classes
+print("Class names:", class_names)
 
-# Print predicted class and confidence
-print(f'Predicted class: {class_names[predicted_class]}')
-print(f'Confidence: {confidence * 100}%')
 
-# Create subplots: one for the image, one for the bar chart
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+# ===============================
+# Run prediction
+# ===============================
+predicted_class, confidence, probabilities, image = predict_image(
+    image_path, model, data_transforms, device
+)
 
-# Display the image on the left subplot
+print(f"Predicted class : {class_names[predicted_class]}")
+print(f"Confidence      : {confidence * 100:.2f}%")
+
+
+# ===============================
+# Visualization
+# ===============================
+fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+# Show image
 axs[0].imshow(image)
-axs[0].set_title(f'Predicted: {class_names[predicted_class]}')
-axs[0].axis('off')
+axs[0].set_title(f"Prediction: {class_names[predicted_class]}")
+axs[0].axis("off")
 
-# Display the bar chart on the right subplot
-print(probabilities)
-multiply = lambda items: list(map(lambda x: x * 100, items))
+# Confidence bar chart
+prob_percent = probabilities * 100
+bars = axs[1].barh(class_names, prob_percent, color="black", height=0.5)
+axs[1].set_xlim(0, 100)
+axs[1].set_title("Confidence Level")
+axs[1].xaxis.grid(True, linestyle="--", alpha=0.3)
 
-rects = axs[1].barh(range(len(class_names)), multiply(probabilities),  align='center',
-                     height=0.5, color='black')
-axs[1].set_yticks(range(len(class_names)))
-axs[1].set_yticklabels(class_names)
-axs[1].set_xlim([0, 101]) 
-axs[1].set_title('Confidence Level')
-axs[1].xaxis.grid(True, linestyle='--', which='major',
-                   color='grey', alpha=.25)
+# Add percentage labels
+for bar in bars:
+    width = bar.get_width()
+    axs[1].text(
+        width + 1 if width < 50 else width - 5,
+        bar.get_y() + bar.get_height() / 2,
+        f"{width:.1f}%",
+        va="center",
+        ha="left" if width < 50 else "right",
+        color="black" if width < 50 else "white",
+        fontweight="bold"
+    )
 
-rect_labels = []
-# Lastly, write in the ranking inside each bar to aid in interpretation
-for rect in rects:
-    # Rectangle widths are already integer-valued but are floating
-    # type, so it helps to remove the trailing decimal point and 0 by
-    # converting width to int type
-    width = int(rect.get_width())
+# Save result
+output_path = "prediction_result.png"
+plt.savefig(output_path, bbox_inches="tight")
+print(f"Prediction figure saved to: {output_path}")
 
-    rankStr = f"{width}%"
-    # The bars aren't wide enough to print the ranking inside
-    if width < 40:
-        # Shift the text to the right side of the right edge
-        xloc = 5
-        # Black against white background
-        clr = 'black'
-        align = 'left'
-    else:
-        # Shift the text to the left side of the right edge
-        xloc = -5
-        # White on magenta
-        clr = 'white'
-        align = 'right'
-
-    # Center the text vertically in the bar
-    yloc = rect.get_y() + rect.get_height() / 2
-    label = axs[1].annotate(rankStr, xy=(width, yloc), xytext=(xloc, 0),
-                        textcoords="offset points",
-                        ha=align, va='center',
-                        color=clr, weight='bold', clip_on=True)
-    rect_labels.append(label)
-
-# Save the figure to disk
-output_path = './prediction_result.png' 
-plt.savefig(output_path, bbox_inches='tight')
-print(f'Figure saved to {output_path}')
-
-# Show the figure
 plt.show()
